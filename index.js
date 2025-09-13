@@ -33,47 +33,38 @@ app.post('/create_preference', async (req, res) => {
       back_urls,
       statement_descriptor,
       external_reference,
-      notification_url,
-      collector_id, // <- ID del vendedor (comercio)
-      commission    // <- % que te queda a vos
+      notification_url
     } = req.body;
 
-    // Validación
-    if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url || !collector_id) {
+    // Validación mínima
+    if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
       console.log("❌ Payload incompleto:", req.body);
       return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
     }
 
-    // 💰 Calculamos tu comisión
-    const total = Number(price) * Number(quantity);
-    const marketplace_fee = commission
-      ? Math.round((total * Number(commission)) / 100) // porcentaje
-      : 0;
+    // 🔹 Hardcodeamos collector_id y comisión
+    const collector_id = "123456789"; // reemplaza con tu merchant ID de prueba
+    const commission = 10;             // % que queda para vos
 
-    // 🔹 Datos de la preferencia
+    const total = Number(price) * Number(quantity);
+    const marketplace_fee = Math.round((total * commission) / 100);
+
     const preferenceData = {
       items: [
-        {
-          title,
-          unit_price: Number(price),
-          quantity: Number(quantity)
-        }
+        { title, unit_price: Number(price), quantity: Number(quantity) }
       ],
       back_urls,
       auto_return: 'approved',
       statement_descriptor,
       external_reference,
       notification_url,
-      marketplace_fee,  // 💡 tu comisión en ARS
-      collector_id,     // 💡 comercio al que se le acredita el resto
-      payer: {
-        email: "test_user_123456@test.com" // sandbox (en producción el email real del comprador)
-      }
+      marketplace_fee,  // 💰 tu comisión en ARS
+      collector_id,     // 🏦 comercio que recibe el resto
+      payer: { email: "test_user_123456@test.com" } // sandbox
     };
 
     console.log("💡 Creando preferencia:", JSON.stringify(preferenceData, null, 2));
 
-    // Crear preferencia
     const response = await preference.create({ body: preferenceData });
 
     console.log("💡 Preferencia creada:", response);
