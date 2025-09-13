@@ -1,8 +1,3 @@
-// 🔹 Solo usar dotenv en desarrollo local (opcional)
-if (process.env.NODE_ENV !== "production") {
-  require('dotenv').config();
-}
-
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -11,16 +6,18 @@ const mercadopago = require('mercadopago');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔹 Verificar que la variable de entorno exista
+// 🔹 Verificar variable de entorno
 if (!process.env.ACCESS_TOKEN) {
   console.error("❌ ERROR: ACCESS_TOKEN no definido en las variables de entorno");
-  process.exit(1); // termina el servidor si no está definido
+  process.exit(1);
 } else {
   console.log("✅ ACCESS_TOKEN detectado correctamente");
 }
 
-// Configuración de Mercado Pago
-mercadopago.configurations.setAccessToken(process.env.ACCESS_TOKEN);
+// 🔹 Configuración correcta para Mercado Pago v2.x
+mercadopago.configurations = {
+  access_token: process.env.ACCESS_TOKEN
+};
 
 // Middlewares
 app.use(cors());
@@ -42,7 +39,7 @@ app.post('/create_preference', async (req, res) => {
       notification_url
     } = req.body;
 
-    // 🔹 Validación de campos obligatorios
+    // Validación de campos obligatorios
     if (!title || !quantity || !price || !email || !collector_id || !marketplace_fee || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
       return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
     }
