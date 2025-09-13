@@ -1,3 +1,4 @@
+// index.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -14,15 +15,16 @@ if (!process.env.ACCESS_TOKEN) {
   console.log("✅ ACCESS_TOKEN detectado correctamente");
 }
 
-// 🔹 Configuración de Mercado Pago
-mercadopago.configure({
-  access_token: process.env.ACCESS_TOKEN
+// 🔹 Nuevo cliente de MP (v2)
+const client = new mercadopago.MercadoPagoConfig({
+  accessToken: process.env.ACCESS_TOKEN
 });
+
+const preference = new mercadopago.Preference(client);
 
 app.use(cors());
 app.use(bodyParser.json());
 
-// Endpoint para crear preferencia
 app.post('/create_preference', async (req, res) => {
   try {
     const {
@@ -35,19 +37,17 @@ app.post('/create_preference', async (req, res) => {
       notification_url
     } = req.body;
 
-    // Validación básica
     if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
       console.log("❌ Payload incompleto:", req.body);
       return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
     }
 
-    // 🔹 Preferencia
-    const preference = {
+    const preferenceData = {
       items: [
         {
           title,
-          unit_price: price,
-          quantity
+          unit_price: Number(price),
+          quantity: Number(quantity)
         }
       ],
       back_urls,
@@ -55,19 +55,18 @@ app.post('/create_preference', async (req, res) => {
       statement_descriptor,
       external_reference,
       notification_url,
-      // 🔹 Email de prueba obligatorio en sandbox
       payer: {
-        email: "test_user_123456@test.com"
+        email: "test_user_123456@test.com" // obligatorio en sandbox
       }
     };
 
-    console.log("💡 Creando preferencia:", JSON.stringify(preference, null, 2));
+    console.log("💡 Creando preferencia:", JSON.stringify(preferenceData, null, 2));
 
-    // 🔹 Crear preferencia
-    const response = await mercadopago.preferences.create(preference);
+    // 🔹 Usamos la nueva API v2
+    const response = await preference.create({ body: preferenceData });
 
-    console.log("💡 Preferencia creada:", response.body);
-    res.json({ preferenceId: response.body.id });
+    console.log("💡 Preferencia creada:", response);
+    res.json({ preferenceId: response.id });
 
   } catch (error) {
     console.error("❌ Error creando preferencia:", error);
