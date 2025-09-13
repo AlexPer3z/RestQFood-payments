@@ -1,4 +1,4 @@
-// 🔹 Carga dotenv solo en desarrollo
+// 🔹 Solo usar dotenv en desarrollo local (opcional)
 if (process.env.NODE_ENV !== "production") {
   require('dotenv').config();
 }
@@ -11,10 +11,12 @@ const mercadopago = require('mercadopago');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔹 Validación de la variable de entorno
+// 🔹 Verificar que la variable de entorno exista
 if (!process.env.ACCESS_TOKEN) {
   console.error("❌ ERROR: ACCESS_TOKEN no definido en las variables de entorno");
   process.exit(1); // termina el servidor si no está definido
+} else {
+  console.log("✅ ACCESS_TOKEN detectado correctamente");
 }
 
 // Configuración de Mercado Pago
