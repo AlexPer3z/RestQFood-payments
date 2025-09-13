@@ -14,7 +14,7 @@ if (!process.env.ACCESS_TOKEN) {
   console.log("✅ ACCESS_TOKEN detectado correctamente");
 }
 
-// 🔹 Configuración correcta para Mercado Pago v2.x
+// 🔹 Configuración de Mercado Pago
 mercadopago.configurations = {
   access_token: process.env.ACCESS_TOKEN
 };
@@ -30,25 +30,20 @@ app.post('/create_preference', async (req, res) => {
       title,
       quantity,
       price,
-      email,
-      marketplace_fee,
-      collector_id,
       back_urls,
       statement_descriptor,
       external_reference,
       notification_url
     } = req.body;
 
-    // Validación de campos obligatorios
-    if (!title || !quantity || !price || !email || !collector_id || !marketplace_fee || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
+    // 🔹 Validación mínima
+    if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
+      console.log("❌ Payload incompleto recibido:", req.body);
       return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
     }
 
     const preference = {
       items: [{ title, unit_price: price, quantity }],
-      marketplace_fee,
-      payer: { email },
-      collector_id,
       back_urls,
       auto_return: 'approved',
       statement_descriptor,
@@ -56,10 +51,15 @@ app.post('/create_preference', async (req, res) => {
       notification_url
     };
 
+    console.log("💡 Creando preferencia con:", preference);
+
     const response = await mercadopago.preferences.create(preference);
+
+    console.log("💡 Preferencia creada:", response.body);
+
     res.json({ preferenceId: response.body.id });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error creando preferencia:", error);
     res.status(500).json({ error: 'Error creando la preferencia' });
   }
 });
