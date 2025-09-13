@@ -43,25 +43,26 @@ app.post('/create_preference', async (req, res) => {
     }
 
     // 🔹 Hardcodeamos collector_id y comisión
-    const collector_id = "123456789"; // reemplaza con tu merchant ID de prueba
+    const collector_id = 123456789; // número, no string
     const commission = 10;             // % que queda para vos
 
     const total = Number(price) * Number(quantity);
     const marketplace_fee = Math.round((total * commission) / 100);
 
-    const preferenceData = {
-      items: [
-        { title, unit_price: Number(price), quantity: Number(quantity) }
-      ],
-      back_urls,
-      auto_return: 'approved',
-      statement_descriptor,
-      external_reference,
-      notification_url,
-      marketplace_fee,  // 💰 tu comisión en ARS
-      collector_id,     // 🏦 comercio que recibe el resto
-      payer: { email: "test_user_123456@test.com" } // sandbox
-    };
+   const preferenceData = {
+  items: [
+    { title, unit_price: Number(price), quantity: Number(quantity) }
+  ],
+  back_urls,
+  auto_return: 'approved',
+  statement_descriptor,
+  external_reference,
+  notification_url,
+  marketplace_fee,  // 💰 tu comisión en ARS
+  collector_id,     // 🏦 comercio que recibe el resto (número)
+  payer: { email: "test_user_123456@test.com" } // sandbox
+};
+
 
     console.log("💡 Creando preferencia:", JSON.stringify(preferenceData, null, 2));
 
