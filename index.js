@@ -7,7 +7,7 @@ const mercadopago = require('mercadopago');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔹 Verificamos el ACCESS_TOKEN de tu app (marketplace)
+// 🔹 Verificamos el ACCESS_TOKEN
 if (!process.env.ACCESS_TOKEN) {
   console.error("❌ ACCESS_TOKEN no definido");
   process.exit(1);
@@ -15,7 +15,7 @@ if (!process.env.ACCESS_TOKEN) {
   console.log("✅ ACCESS_TOKEN detectado correctamente");
 }
 
-// 🔹 Configuración nueva SDK (v2)
+// 🔹 Configuración SDK v2
 const client = new mercadopago.MercadoPagoConfig({
   accessToken: process.env.ACCESS_TOKEN
 });
@@ -42,27 +42,20 @@ app.post('/create_preference', async (req, res) => {
       return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
     }
 
-    // 🔹 Hardcodeamos collector_id y comisión
-    const collector_id = 123456789; // número, no string
-    const commission = 10;             // % que queda para vos
-
-    const total = Number(price) * Number(quantity);
-    const marketplace_fee = Math.round((total * commission) / 100);
-
-   const preferenceData = {
-  items: [
-    { title, unit_price: Number(price), quantity: Number(quantity) }
-  ],
-  back_urls,
-  auto_return: 'approved',
-  statement_descriptor,
-  external_reference,
-  notification_url,
-  marketplace_fee,  // 💰 tu comisión en ARS
-  collector_id,     // 🏦 comercio que recibe el resto (número)
-  payer: { email: "test_user_123456@test.com" } // sandbox
-};
-
+    // 🔹 Preferencia simple sin split
+    const preferenceData = {
+      items: [
+        { title, unit_price: Number(price), quantity: Number(quantity) }
+      ],
+      back_urls,
+      auto_return: 'approved',
+      statement_descriptor,
+      external_reference,
+      notification_url,
+      payer: {
+        email: "test_user_123456@test.com" // sandbox, reemplazar con email real en producción
+      }
+    };
 
     console.log("💡 Creando preferencia:", JSON.stringify(preferenceData, null, 2));
 
