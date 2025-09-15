@@ -7,67 +7,87 @@ const mercadopago = require('mercadopago');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔹 Verificamos el ACCESS_TOKEN
-if (!process.env.ACCESS_TOKEN) {
+// 🔹 Hardcodeamos el Access Token de producción
+const ACCESS_TOKEN = "APP_USR-6437200091418350-091312-ebf83f1b75b73b503d382653ed4fc8cf-237587532";
+if (!ACCESS_TOKEN) {
   console.error("❌ ACCESS_TOKEN no definido");
   process.exit(1);
 } else {
-  console.log("✅ ACCESS_TOKEN detectado correctamente");
+  console.log("✅ ACCESS_TOKEN definido correctamente");
+  console.log("🔹 Primeros 10 caracteres del token:", ACCESS_TOKEN.slice(0, 10) + "...");
 }
 
-// 🔹 Configuración SDK v2
-const client = new mercadopago.MercadoPagoConfig({
-  accessToken: process.env.ACCESS_TOKEN
-});
-const preference = new mercadopago.Preference(client);
+// 🔹 Configuramos el SDK
+mercadopago.configurations.setAccessToken(ACCESS_TOKEN);
 
+// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 
+// Ruta de prueba para debug
+app.get('/', (req, res) => {
+  console.log("💡 GET / recibido");
+  res.send("Servidor de Mercado Pago corriendo correctamente");
+});
+
+// 🔹 Endpoint para crear preferencia
 app.post('/create_preference', async (req, res) => {
-  try {
-    const {
-      title,
-      quantity,
-      price,
-      back_urls,
-      statement_descriptor,
-      external_reference,
-      notification_url
-    } = req.body;
+  console.log("💡 POST /create_preference recibido");
+  console.log("📦 Request body:", JSON.stringify(req.body, null, 2));
 
-    // Validación mínima
-    if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
-      console.log("❌ Payload incompleto:", req.body);
-      return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
+  const {
+    title,
+    quantity,
+    price,
+    back_urls,
+    statement_descriptor,
+    external_reference,
+    notification_url,
+    payer_email
+  } = req.body;
+
+  // Validación mínima
+  if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
+    console.warn("⚠️ Payload incompleto:", req.body);
+    return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
+  }
+
+  // Construir preferencia
+  const preferenceData = {
+    items: [
+      { title, unit_price: Number(price), quantity: Number(quantity) }
+    ],
+    back_urls,
+    auto_return: 'approved',
+    statement_descriptor,
+    external_reference,
+    notification_url,
+    payer: {
+      email: payer_email || "test_user_123456@test.com" // reemplazar con email real en producción
     }
+  };
 
-    // 🔹 Preferencia simple sin split
-    const preferenceData = {
-      items: [
-        { title, unit_price: Number(price), quantity: Number(quantity) }
-      ],
-      back_urls,
-      auto_return: 'approved',
-      statement_descriptor,
-      external_reference,
-      notification_url,
-      payer: {
-        email: "test_user_123456@test.com" // sandbox, reemplazar con email real en producción
-      }
-    };
+  console.log("💡 Preference data a enviar a MP:", JSON.stringify(preferenceData, null, 2));
 
-    console.log("💡 Creando preferencia:", JSON.stringify(preferenceData, null, 2));
+  try {
+    const response = await mercadopago.preferences.create(preferenceData);
+    console.log("✅ Preferencia creada correctamente");
+    console.log("💎 Response completo de MP:", JSON.stringify(response, null, 2));
 
-    const response = await preference.create({ body: preferenceData });
-
-    console.log("💡 Preferencia creada:", response);
-    res.json({ preferenceId: response.id, init_point: response.init_point });
-
+    res.json({
+      preferenceId: response.body.id,
+      init_point: response.body.init_point
+    });
   } catch (error) {
-    console.error("❌ Error creando preferencia:", error);
-    res.status(500).json({ error: 'Error creando la preferencia' });
+    console.error("❌ Error creando preferencia en MP:", error);
+    res.status(500).json({
+      error: 'Error creando la preferencia',
+      details: error.message
+    });
   }
 });
 
-app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
+// Servidor escuchando
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+});
