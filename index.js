@@ -12,14 +12,6 @@ const ACCESS_TOKEN = "APP_USR-6437200091418350-091312-ebf83f1b75b73b503d382653ed
 console.log("✅ ACCESS_TOKEN definido correctamente");
 console.log("🔹 Primeros 10 caracteres del token:", ACCESS_TOKEN.slice(0, 10) + "...");
 
-// 🔹 Configuración SDK v2
-try {
-    mercadopago.configurations.setAccessToken(ACCESS_TOKEN);
-    console.log("✅ SDK de Mercado Pago inicializado correctamente");
-} catch (err) {
-    console.error("❌ Error inicializando SDK de Mercado Pago:", err);
-}
-
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -67,7 +59,8 @@ app.post('/create_preference', async (req, res) => {
     console.log("💡 Preference data a enviar a MP:", JSON.stringify(preferenceData, null, 2));
 
     try {
-        const response = await mercadopago.preferences.create(preferenceData);
+        // 🔹 En v2 se pasa el access_token directamente en la llamada
+        const response = await mercadopago.preferences.create(preferenceData, { access_token: ACCESS_TOKEN });
         console.log("✅ Preferencia creada correctamente");
         console.log("💎 Response completo de MP:", JSON.stringify(response, null, 2));
 
