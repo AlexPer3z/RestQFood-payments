@@ -17,14 +17,13 @@ if (!ACCESS_TOKEN) {
   console.log("🔹 Primeros 10 caracteres del token:", ACCESS_TOKEN.slice(0, 10) + "...");
 }
 
-// 🔹 Configuramos el SDK
-mercadopago.configurations.setAccessToken(ACCESS_TOKEN);
+// 🔹 Inicializamos cliente con v2 SDK
+const mpClient = new mercadopago({ access_token: ACCESS_TOKEN });
 
-// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 
-// Ruta de prueba para debug
+// Ruta raíz para debug
 app.get('/', (req, res) => {
   console.log("💡 GET / recibido");
   res.send("Servidor de Mercado Pago corriendo correctamente");
@@ -46,13 +45,11 @@ app.post('/create_preference', async (req, res) => {
     payer_email
   } = req.body;
 
-  // Validación mínima
   if (!title || !quantity || !price || !back_urls || !statement_descriptor || !external_reference || !notification_url) {
     console.warn("⚠️ Payload incompleto:", req.body);
     return res.status(400).json({ error: 'Faltan datos obligatorios en la solicitud' });
   }
 
-  // Construir preferencia
   const preferenceData = {
     items: [
       { title, unit_price: Number(price), quantity: Number(quantity) }
@@ -63,14 +60,14 @@ app.post('/create_preference', async (req, res) => {
     external_reference,
     notification_url,
     payer: {
-      email: payer_email || "test_user_123456@test.com" // reemplazar con email real en producción
+      email: payer_email || "test_user_123456@test.com"
     }
   };
 
   console.log("💡 Preference data a enviar a MP:", JSON.stringify(preferenceData, null, 2));
 
   try {
-    const response = await mercadopago.preferences.create(preferenceData);
+    const response = await mpClient.preferences.create(preferenceData);
     console.log("✅ Preferencia creada correctamente");
     console.log("💎 Response completo de MP:", JSON.stringify(response, null, 2));
 
