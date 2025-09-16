@@ -1,100 +1,97 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const mercadopago = require('mercadopago');
-const mysql = require('mysql2/promise');
+// backend/index.js
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import mercadopago from "mercadopago";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 🔹 Tu token de la plataforma (vos cobrás el 20%)
-const PLATFORM_ACCESS_TOKEN = "APP_USR-6437200091418350-091312-ebf83f1b75b73b503d382653ed4fc8cf-237587532";
-
-// 🔹 Conexión a la base de datos
-const pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "tu_password",
-  database: "tu_base",
-});
-
-// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 
-// Ruta raíz
-app.get('/', (req, res) => {
-  res.send("Servidor de Mercado Pago corriendo correctamente");
-});
+// 🔹 Configuramos tu token principal para cobrar comisión
+const MY_ACCESS_TOKEN = "APP_USR-6437200091418350-091312-ebf83f1b75b73b503d382653ed4fc8cf-237587532";
+mercadopago.configure({ access_token: MY_ACCESS_TOKEN });
 
-// 🔹 Endpoint crear preferencia
-app.post('/create_preference', async (req, res) => {
+app.post("/create_preference", async (req, res) => {
   try {
-    console.log("📦 Request body:", req.body);
+    const { items, back_urls, notification_url } = req.body;
 
-    const { items, back_urls, notification_url, userId } = req.body;
+    console.log("📥 Request received:", req.body);
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ error: "No se enviaron productos" });
+    if (!items || !items.length || !back_urls || !notification_url) {
+      return res.status(400).json({ error: "Datos incompletos" });
     }
 
-    // 🔹 Procesamos cada producto
-    const mpItems = [];
-    let preferenceResponse;
+    const preferences = [];
 
     for (const item of items) {
-      // 1. Buscar el user_id dueño del producto
-      const [rows] = await pool.query("SELECT user_id FROM productos WHERE id = ?", [item.id]);
-      if (!rows.length) throw new Error(`Producto ${item.id} no encontrado`);
-      const productOwnerId = rows[0].user_id;
+      console.log("🔹 Procesando item:", item);
 
-      // 2. Buscar el mp_access_token del restaurante dueño
-      const [rowsRest] = await pool.query("SELECT mp_access_token FROM restaurantes WHERE id = ?", [productOwnerId]);
-      if (!rowsRest.length) throw new Error(`Restaurante ${productOwnerId} no encontrado`);
-      const merchantAccessToken = rowsRest[0].mp_access_token;
+      if (!item.mp_access_token) {
+        console.error(`⚠️ No hay mp_access_token para user_id ${item.user_id}`);
+        continue;
+      }
 
-      // 3. Crear preferencia individual en la cuenta del comerciante
-      mercadopago.configure({ access_token: merchantAccessToken });
+      const unitPrice = Number(item.precio) || 0;
+      const cantidad = Number(item.cantidad) || 1;
+      const total = unitPrice * cantidad;
+      const marketplace_fee = parseFloat((total * 0.20).toFixed(2)); // 20% para vos
 
       const preferenceData = {
         items: [
           {
             title: item.nombre,
-            unit_price: Number(item.precio),
-            quantity: Number(item.cantidad),
+            quantity: cantidad,
+            unit_price: unitPrice,
+            currency_id: "ARS",
           },
         ],
         back_urls,
         auto_return: "approved",
-        external_reference: userId, // comprador
+        marketplace_fee,
         notification_url,
-        marketplace_fee: (item.precio * item.cantidad) * 0.20, // 💰 tu comisión (20%)
       };
 
-      console.log("💡 Preference data:", preferenceData);
+      console.log("📝 PreferenceData:", preferenceData);
+      console.log("💳 Token del vendedor:", item.mp_access_token);
 
-      preferenceResponse = await mercadopago.preferences.create(preferenceData);
-      console.log("✅ Preferencia creada en MP:", preferenceResponse.body.id);
+      try {
+        // v1 permite pasar token distinto por item
+        const preference = await mercadopago.preferences.create(preferenceData, { access_token: item.mp_access_token });
 
-      mpItems.push({
-        product_id: item.id,
-        preferenceId: preferenceResponse.body.id,
-        init_point: preferenceResponse.body.init_point,
-      });
+        console.log("✅ Preferencia creada:", preference.response);
+
+        preferences.push({
+          user_id: item.user_id,
+          preferenceId: preference.response.id,
+          init_point: preference.response.init_point,
+        });
+      } catch (err) {
+        console.error("❌ Error creando preferencia para item:", preferenceData, err);
+      }
     }
 
-    res.json({ success: true, preferences: mpItems });
+    if (!preferences.length) {
+      return res.status(500).json({ error: "No se pudieron crear preferencias" });
+    }
 
+    res.json({ preferences });
   } catch (error) {
-    console.error("❌ Error creando preferencia:", error);
-    res.status(500).json({
-      error: "Error creando la preferencia",
-      details: error.message,
-    });
+    console.error("❌ Error general creando preferencias:", error);
+    res.status(500).json({ error: "Error creando preferencias" });
   }
 });
 
-// Servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+// 🔹 Webhook y back URLs de prueba
+app.post("/webhook", (req, res) => {
+  console.log("📩 Notificación recibida:", req.body);
+  res.status(200).send("OK");
 });
+
+app.get("/success", (req, res) => res.send("Pago aprobado ✅"));
+app.get("/failure", (req, res) => res.send("Pago fallido ❌"));
+app.get("/pending", (req, res) => res.send("Pago pendiente ⏳"));
+
+app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
