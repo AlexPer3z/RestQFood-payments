@@ -1,3 +1,30 @@
+import mysql from "mysql2/promise";
+
+// 🔹 Conexión MySQL a Hostinger
+const db = await mysql.createPool({
+  host: "srv1897.hstgr.io", // o 193.203.175.239
+  user: "u402567679_RestQFood",
+  password: "BzdH(z`+!HZ+f&2",
+  database: "u402567679_RestQFood",
+  port: 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+
+app.get("/test-db", async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT NOW() AS fecha, DATABASE() AS db, USER() AS user");
+    res.json({ ok: true, result: rows[0] });
+  } catch (err) {
+    console.error("❌ Error conectando a la BD:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
+
+
 // backend/index.js
 import express from "express";
 import cors from "cors";
