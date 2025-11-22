@@ -284,13 +284,18 @@ console.log("✅ Reintegro total realizado:", refundData);
   }
 });
 
+// Redirecciones reales para la app
+app.get("/success", (req, res) => {
+  res.redirect("https://restqfood.com/redirect/success.html");
+});
 
+app.get("/failure", (req, res) => {
+  res.redirect("https://restqfood.com/redirect/failure.html");
+});
 
-
-// 🔹 Rutas de estado de pago
-app.get("/success", (req, res) => res.send("Pago aprobado ✅"));
-app.get("/failure", (req, res) => res.send("Pago fallido ❌"));
-app.get("/pending", (req, res) => res.send("Pago pendiente ⏳"));
+app.get("/pending", (req, res) => {
+  res.redirect("https://restqfood.com/redirect/pending.html");
+});
 
 // 🔹 Inicializar DB y levantar servidor
 async function init() {
